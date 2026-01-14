@@ -50,8 +50,6 @@ export class TerminalUI {
 
   renderBuffer() {
     // Only update changed lines for smooth rendering
-    const maxLines = Math.max(this.buffer.length, this.lastBuffer.length)
-    
     for (let i = 0; i < this.buffer.length; i++) {
       if (this.lastBuffer[i] !== this.buffer[i]) {
         this.moveTo(1, i + 1)
@@ -202,25 +200,25 @@ export class TerminalUI {
     const headers = ["Rule", "Value"]
     const data = [
       ["Mode", ecosystem.mode.toUpperCase()],
-      ["Energy Decay", `${rules.energyDecay.toFixed(2)}/tick`],
-      ["Health Decay", `${rules.healthDecay}/tick`],
-      ["Food Spawn Rate", `${(rules.foodSpawnRate * 100).toFixed(0)}%`],
-      ["Max Food", rules.maxFood],
-      ["Climate", rules.climate],
-      ["Season", rules.season],
-      ["Disaster Chance", `${(rules.disasterChance * 100).toFixed(1)}%`],
+      ["Energy Decay", `${(rules.energyDecay || 0).toFixed(2)}/tick`],
+      ["Health Decay", `${rules.healthDecay || 0}/tick`],
+      ["Food Spawn Rate", `${((rules.foodSpawnRate || 0) * 100).toFixed(0)}%`],
+      ["Max Food", rules.maxFood || 0],
+      ["Climate", rules.climate || "unknown"],
+      ["Season", rules.season || "unknown"],
+      ["Disaster Chance", `${((rules.disasterChance || 0) * 100).toFixed(1)}%`],
     ]
 
     if (ecosystem.mode === "advanced") {
       data.push(
-        ["Reproduction Threshold", `${rules.reproductionThreshold}%`],
-        ["Aging Rate", rules.agingRate.toString()],
-        ["Predation Efficiency", `${(rules.predationEfficiency * 100).toFixed(0)}%`],
-        ["Disease Spread", `${(rules.diseaseSpread * 100).toFixed(0)}%`],
+        ["Reproduction Threshold", `${rules.reproductionThreshold || 0}%`],
+        ["Aging Rate", (rules.agingRate || 0).toString()],
+        ["Predation Efficiency", `${((rules.predationEfficiency || 0) * 100).toFixed(0)}%`],
+        ["Disease Spread", `${((rules.diseaseSpread || 0) * 100).toFixed(0)}%`],
         ["Migration Pattern", rules.migrationPattern ? "Enabled" : "Disabled"],
-        ["Competition Factor", `${(rules.competitionFactor * 100).toFixed(0)}%`],
-        ["Weather Variability", `${(rules.weatherVariability * 100).toFixed(0)}%`],
-        ["Resource Regeneration", `${(rules.resourceRegeneration * 100).toFixed(0)}%`]
+        ["Competition Factor", `${((rules.competitionFactor || 0) * 100).toFixed(0)}%`],
+        ["Weather Variability", `${((rules.weatherVariability || 0) * 100).toFixed(0)}%`],
+        ["Resource Regeneration", `${((rules.resourceRegeneration || 0) * 100).toFixed(0)}%`]
       )
     }
 
@@ -314,6 +312,9 @@ export class TerminalUI {
 
   draw(ecosystem, paused = false) {
     this.updateFPS()
+    
+    // Reset buffer to build fresh screen content
+    // The renderBuffer() method will compare with lastBuffer for differential updates
     this.buffer = []
     this.hideCursor()
     
@@ -340,6 +341,7 @@ export class TerminalUI {
     
     this.drawControls()
     
+    // Render only changed lines for smooth updates
     this.renderBuffer()
     this.showCursor()
   }

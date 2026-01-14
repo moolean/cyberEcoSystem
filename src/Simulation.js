@@ -171,11 +171,11 @@ export class Simulation {
     process.stdout.write('\x1b[2J\x1b[H')
 
     console.log(coloredText("\nAvailable rules to modify:", "yellow"))
-    console.log("1. Energy Decay (current: " + this.ecosystem.rules.energyDecay.toFixed(2) + ")")
-    console.log("2. Health Decay (current: " + this.ecosystem.rules.healthDecay + ")")
-    console.log("3. Food Spawn Rate (current: " + this.ecosystem.rules.foodSpawnRate.toFixed(2) + ")")
-    console.log("4. Max Food (current: " + this.ecosystem.rules.maxFood + ")")
-    console.log("5. Disaster Chance (current: " + this.ecosystem.rules.disasterChance.toFixed(3) + ")")
+    console.log("1. Energy Decay (current: " + (this.ecosystem.rules.energyDecay || 0).toFixed(2) + ")")
+    console.log("2. Health Decay (current: " + (this.ecosystem.rules.healthDecay || 0).toFixed(2) + ")")
+    console.log("3. Food Spawn Rate (current: " + (this.ecosystem.rules.foodSpawnRate || 0).toFixed(2) + ")")
+    console.log("4. Max Food (current: " + (this.ecosystem.rules.maxFood || 0) + ")")
+    console.log("5. Disaster Chance (current: " + (this.ecosystem.rules.disasterChance || 0).toFixed(3) + ")")
     console.log("0. Exit menu")
 
     const rl = readline.createInterface({
@@ -191,23 +191,33 @@ export class Simulation {
       switch (choice) {
         case "1":
           const energyDecay = parseFloat(await question("Enter new energy decay: "))
-          this.ecosystem.rules.energyDecay = energyDecay
+          if (!isNaN(energyDecay)) {
+            this.ecosystem.rules.energyDecay = energyDecay
+          }
           break
         case "2":
           const healthDecay = parseFloat(await question("Enter new health decay: "))
-          this.ecosystem.rules.healthDecay = healthDecay
+          if (!isNaN(healthDecay)) {
+            this.ecosystem.rules.healthDecay = healthDecay
+          }
           break
         case "3":
           const foodSpawnRate = parseFloat(await question("Enter new food spawn rate (0-1): "))
-          this.ecosystem.rules.foodSpawnRate = Math.max(0, Math.min(1, foodSpawnRate))
+          if (!isNaN(foodSpawnRate)) {
+            this.ecosystem.rules.foodSpawnRate = Math.max(0, Math.min(1, foodSpawnRate))
+          }
           break
         case "4":
           const maxFood = parseInt(await question("Enter new max food: "))
-          this.ecosystem.rules.maxFood = maxFood
+          if (!isNaN(maxFood)) {
+            this.ecosystem.rules.maxFood = maxFood
+          }
           break
         case "5":
           const disasterChance = parseFloat(await question("Enter new disaster chance (0-1): "))
-          this.ecosystem.rules.disasterChance = Math.max(0, Math.min(1, disasterChance))
+          if (!isNaN(disasterChance)) {
+            this.ecosystem.rules.disasterChance = Math.max(0, Math.min(1, disasterChance))
+          }
           break
         case "0":
           break
