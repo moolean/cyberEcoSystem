@@ -4,7 +4,7 @@ export class TerminalUI {
   constructor() {
     this.width = getTerminalWidth()
     this.height = process.stdout.rows || 24
-    this.currentView = "overview"
+    this.currentView = "animals"
     this.logs = []
     this.maxLogs = 50
     this.sortBy = "name"
@@ -15,21 +15,25 @@ export class TerminalUI {
     this.fpsUpdateTime = 0
     this.cursor = { x: 0, y: 0 }
     this.scrollOffset = 0
+    this.buffer = []
+    this.lastBuffer = []
+    this.initialized = false
     this.views = {
-      "1": "overview",
-      "2": "animals", 
-      "3": "statistics",
-      "4": "rules",
+      "1": "animals", 
+      "2": "statistics",
+      "3": "rules",
+      "4": "ecosystem",
       "5": "performance"
     }
   }
 
   clear() {
-    clearScreen()
-  }
-
-  moveTo(x, y) {
-    process.stdout.write(`\x1b[${y};${x}H`)
+    if (!this.initialized) {
+      process.stdout.write('\x1b[2J\x1b[H')
+      this.initialized = true
+    } else {
+      clearScreen()
+    }
   }
 
   clearLine() {
@@ -44,6 +48,40 @@ export class TerminalUI {
     process.stdout.write('\x1b[?25h')
   }
 
+  renderBuffer() {
+    // Only update changed lines for smooth rendering
+    const maxLines = Math.max(this.buffer.length, this.lastBuffer.length)
+    
+    for (let i = 0; i < this.buffer.length; i++) {
+      if (this.lastBuffer[i] !== this.buffer[i]) {
+        this.moveTo(1, i + 1)
+        this.clearLine()
+        process.stdout.write(this.buffer[i])
+      }
+    }
+    
+    // Clear any leftover lines from previous render
+    if (this.lastBuffer.length > this.buffer.length) {
+      for (let i = this.buffer.length; i < this.lastBuffer.length; i++) {
+        this.moveTo(1, i + 1)
+        this.clearLine()
+      }
+    }
+    
+    this.lastBuffer = [...this.buffer]
+    
+    // Ensure cursor is hidden at the end
+    this.hideCursor()
+  }
+
+  addToBuffer(line) {
+    this.buffer.push(line)
+  }
+
+  moveTo(x, y) {
+    process.stdout.write(`\x1b[${y};${x}H`)
+  }
+
   updateFPS() {
     const now = Date.now()
     this.frameCount++
@@ -55,7 +93,7 @@ export class TerminalUI {
     }
   }
 
-  drawHeader(ecosystem) {
+  drawHeader(ecosystem, paused = false) {
     const stats = ecosystem.getStatistics()
     const seasonEmoji = {
       spring: "🌸",
@@ -72,18 +110,15 @@ export class TerminalUI {
       night: "🌙"
     }
 
-    this.moveTo(1, 1)
-    console.log(coloredText("=".repeat(this.width), "cyan"))
-    this.moveTo(1, 2)
-    console.log(coloredText("🌍 VIRTUAL ECOSYSTEM SIMULATOR 🌍", "bold"))
-    this.moveTo(1, 3)
-    console.log(coloredText("=".repeat(this.width), "cyan"))
+    const separator = "=".repeat(this.width)
+    const pausedText = paused ? coloredText(" [PAUSED]", "yellow") : ""
     
-    this.moveTo(1, 4)
-    console.log(coloredText(`Season: ${seasonEmoji[stats.season]} ${stats.season.toUpperCase()} | Time: ${timeEmoji[timeOfDay]} ${timeOfDay.toUpperCase()} | FPS: ${this.fps}`, "yellow"))
-    this.moveTo(1, 5)
-    console.log(coloredText(`Tick: ${stats.time} | View: ${this.currentView.toUpperCase()} | Animals: ${stats.total}`, "blue"))
-    console.log()
+    this.addToBuffer(coloredText(separator, "cyan"))
+    this.addToBuffer(coloredText("  🌍 VIRTUAL ECOSYSTEM SIMULATOR 🌍", "bold") + pausedText)
+    this.addToBuffer(coloredText(separator, "cyan"))
+    this.addToBuffer(coloredText(`  Season: ${seasonEmoji[stats.season]} ${stats.season.toUpperCase()} | Time: ${timeEmoji[timeOfDay]} ${timeOfDay.toUpperCase()} | FPS: ${this.fps}`, "yellow"))
+    this.addToBuffer(coloredText(`  Tick: ${stats.time} | View: ${this.currentView.toUpperCase()} (Press 1-5) | Animals: ${stats.total}`, "blue"))
+    this.addToBuffer("")
   }
 
   getTimeOfDay(time) {
@@ -97,6 +132,9 @@ export class TerminalUI {
   drawStatistics(ecosystem) {
     const stats = ecosystem.getStatistics()
 
+    this.addToBuffer(coloredText("  📊 ECOSYSTEM STATISTICS", "bold"))
+    this.addToBuffer("")
+
     const headers = ["Metric", "Value"]
     const data = [
       ["Total Animals", stats.total],
@@ -109,18 +147,22 @@ export class TerminalUI {
       ["Avg Age", Math.round(stats.averageAge)],
     ]
 
-    console.log(coloredText("📊 ECOSYSTEM STATISTICS", "bold"))
-    console.log(createTable(headers, data))
-    console.log()
+    const table = createTable(headers, data)
+    table.split('\n').forEach(line => this.addToBuffer("  " + line))
+    this.addToBuffer("")
   }
 
   drawAnimals(ecosystem) {
-    const animals = ecosystem.animals.slice(0, 20)
+    const maxDisplay = Math.min(20, this.height - 10)
+    const animals = ecosystem.animals.slice(this.scrollOffset, this.scrollOffset + maxDisplay)
 
     if (animals.length === 0) {
-      console.log(coloredText("❌ No animals alive in the ecosystem!", "red"))
+      this.addToBuffer(coloredText("  ❌ No animals alive in the ecosystem!", "red"))
       return
     }
+
+    this.addToBuffer(coloredText("  🐾 ANIMAL STATUS", "bold"))
+    this.addToBuffer("")
 
     const headers = ["Name", "Species", "Energy", "Health", "Age", "Status"]
     const data = animals.map((animal) => {
@@ -142,75 +184,72 @@ export class TerminalUI {
       ]
     })
 
-    console.log(coloredText("🐾 ANIMAL STATUS", "bold"))
-    console.log(createTable(headers, data))
+    const table = createTable(headers, data)
+    table.split('\n').forEach(line => this.addToBuffer("  " + line))
 
-    if (ecosystem.animals.length > 20) {
-      console.log(coloredText(`... and ${ecosystem.animals.length - 20} more animals`, "white"))
+    if (ecosystem.animals.length > maxDisplay) {
+      this.addToBuffer("")
+      this.addToBuffer(coloredText(`  Showing ${this.scrollOffset + 1}-${Math.min(this.scrollOffset + maxDisplay, ecosystem.animals.length)} of ${ecosystem.animals.length} | Use ↑↓ to scroll`, "white"))
     }
-    console.log()
+    this.addToBuffer("")
   }
 
   drawRules(ecosystem) {
-    this.moveTo(1, 7)
-    console.log(coloredText("⚙️  ECOSYSTEM RULES", "bold"))
+    this.addToBuffer(coloredText("  ⚙️  ECOSYSTEM RULES", "bold"))
+    this.addToBuffer("")
 
     const rules = ecosystem.rules
     const headers = ["Rule", "Value"]
-    const basicData = [
+    const data = [
       ["Mode", ecosystem.mode.toUpperCase()],
-      ["Energy Decay", `${rules.energyDecay}/tick`],
+      ["Energy Decay", `${rules.energyDecay.toFixed(2)}/tick`],
       ["Health Decay", `${rules.healthDecay}/tick`],
       ["Food Spawn Rate", `${(rules.foodSpawnRate * 100).toFixed(0)}%`],
       ["Max Food", rules.maxFood],
       ["Climate", rules.climate],
+      ["Season", rules.season],
       ["Disaster Chance", `${(rules.disasterChance * 100).toFixed(1)}%`],
     ]
 
-    const advancedData = ecosystem.mode === "advanced" ? [
-      ["Reproduction Threshold", `${rules.reproductionThreshold}%`],
-      ["Aging Rate", rules.agingRate.toString()],
-      ["Predation Efficiency", `${(rules.predationEfficiency * 100).toFixed(0)}%`],
-      ["Disease Spread", `${(rules.diseaseSpread * 100).toFixed(0)}%`],
-      ["Migration Pattern", rules.migrationPattern ? "Enabled" : "Disabled"],
-      ["Competition Factor", `${(rules.competitionFactor * 100).toFixed(0)}%`],
-      ["Weather Variability", `${(rules.weatherVariability * 100).toFixed(0)}%`],
-      ["Resource Regeneration", `${(rules.resourceRegeneration * 100).toFixed(0)}%`]
-    ] : []
-
-    this.moveTo(1, 9)
-    console.log(createTable(headers, basicData))
-    
-    if (advancedData.length > 0) {
-      this.moveTo(1, 17)
-      console.log(coloredText("🔬 ADVANCED PARAMETERS", "bold"))
-      this.moveTo(1, 19)
-      console.log(createTable(headers, advancedData))
+    if (ecosystem.mode === "advanced") {
+      data.push(
+        ["Reproduction Threshold", `${rules.reproductionThreshold}%`],
+        ["Aging Rate", rules.agingRate.toString()],
+        ["Predation Efficiency", `${(rules.predationEfficiency * 100).toFixed(0)}%`],
+        ["Disease Spread", `${(rules.diseaseSpread * 100).toFixed(0)}%`],
+        ["Migration Pattern", rules.migrationPattern ? "Enabled" : "Disabled"],
+        ["Competition Factor", `${(rules.competitionFactor * 100).toFixed(0)}%`],
+        ["Weather Variability", `${(rules.weatherVariability * 100).toFixed(0)}%`],
+        ["Resource Regeneration", `${(rules.resourceRegeneration * 100).toFixed(0)}%`]
+      )
     }
+
+    const table = createTable(headers, data)
+    table.split('\n').forEach(line => this.addToBuffer("  " + line))
+    this.addToBuffer("")
   }
 
   drawControls() {
     const controls = [
-      "[Space] Pause/Resume",
+      "[Space] Pause",
       "[1-5] Switch Views", 
-      "[R] Rules",
-      "[M] Mode",
+      "[R] Edit Rules",
+      "[M] Toggle Mode",
       "[Q] Quit",
       "[↑↓] Scroll",
       "[S] Sort"
     ]
     
-    this.moveTo(1, this.height - 2)
-    console.log(coloredText("🎮 CONTROLS", "bold"))
-    this.moveTo(1, this.height - 1)
-    console.log(coloredText(controls.join("  "), "white"))
+    const separator = "=".repeat(this.width)
+    this.addToBuffer(coloredText(separator, "cyan"))
+    this.addToBuffer(coloredText("  🎮 CONTROLS: " + controls.join(" • "), "white"))
   }
 
   drawPerformanceView(ecosystem) {
     const stats = ecosystem.getStatistics()
     
-    this.moveTo(1, 7)
-    console.log(coloredText("⚡ PERFORMANCE METRICS", "bold"))
+    this.addToBuffer(coloredText("  ⚡ PERFORMANCE METRICS", "bold"))
+    this.addToBuffer("")
     
     const perfData = [
       ["FPS", this.fps.toString()],
@@ -218,11 +257,50 @@ export class TerminalUI {
       ["Animals Processed", stats.total.toString()],
       ["Food Items", stats.food.toString()],
       ["Memory Usage", `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`],
-      ["CPU Time", `${(process.cpuUsage().user / 1000000).toFixed(2)}s`]
+      ["CPU Time", `${(process.cpuUsage().user / 1000000).toFixed(2)}s`],
+      ["Total Ticks", stats.time.toString()],
+      ["Current Season", stats.season]
     ]
     
-    this.moveTo(1, 9)
-    console.log(createTable(["Metric", "Value"], perfData))
+    const table = createTable(["Metric", "Value"], perfData)
+    table.split('\n').forEach(line => this.addToBuffer("  " + line))
+    this.addToBuffer("")
+  }
+
+  drawEcosystemView(ecosystem) {
+    const stats = ecosystem.getStatistics()
+    
+    this.addToBuffer(coloredText("  🌍 ECOSYSTEM OVERVIEW", "bold"))
+    this.addToBuffer("")
+    
+    const data = [
+      ["Population", stats.total.toString()],
+      ["Herbivores", `${stats.herbivores} 🌱`],
+      ["Carnivores", `${stats.carnivores} 🦁`],
+      ["Omnivores", `${stats.omnivores} 🐻`],
+      ["Food Supply", stats.food.toString()],
+      ["Avg Energy", `${Math.round(stats.averageEnergy)}%`],
+      ["Avg Health", `${Math.round(stats.averageHealth)}%`],
+      ["Avg Age", Math.round(stats.averageAge).toString()],
+      ["Season", `${stats.season} ${this.getSeasonEmoji(stats.season)}`],
+      ["Time of Day", this.getTimeOfDay(stats.time)],
+      ["Climate", ecosystem.rules.climate],
+      ["Ticks Elapsed", stats.time.toString()],
+    ]
+    
+    const table = createTable(["Attribute", "Value"], data)
+    table.split('\n').forEach(line => this.addToBuffer("  " + line))
+    this.addToBuffer("")
+  }
+
+  getSeasonEmoji(season) {
+    const seasonEmoji = {
+      spring: "🌸",
+      summer: "☀️",
+      autumn: "🍂",
+      winter: "❄️",
+    }
+    return seasonEmoji[season] || "🌍"
   }
 
   switchView(viewNumber) {
@@ -234,27 +312,26 @@ export class TerminalUI {
     return false
   }
 
-  draw(ecosystem) {
+  draw(ecosystem, paused = false) {
     this.updateFPS()
-    this.clear()
+    this.buffer = []
     this.hideCursor()
     
-    this.drawHeader(ecosystem)
+    this.drawHeader(ecosystem, paused)
     
+    // Each view shows only ONE table
     switch (this.currentView) {
-      case "overview":
-        this.drawStatistics(ecosystem)
-        this.drawAnimals(ecosystem)
-        this.drawRules(ecosystem)
-        break
       case "animals":
-        this.drawDetailedAnimals(ecosystem)
+        this.drawAnimals(ecosystem)
         break
       case "statistics":
-        this.drawDetailedStatistics(ecosystem)
+        this.drawStatistics(ecosystem)
         break
       case "rules":
-        this.drawDetailedRules(ecosystem)
+        this.drawRules(ecosystem)
+        break
+      case "ecosystem":
+        this.drawEcosystemView(ecosystem)
         break
       case "performance":
         this.drawPerformanceView(ecosystem)
@@ -262,80 +339,9 @@ export class TerminalUI {
     }
     
     this.drawControls()
+    
+    this.renderBuffer()
     this.showCursor()
-  }
-
-  drawDetailedAnimals(ecosystem) {
-    const animals = ecosystem.animals.slice(this.scrollOffset, this.scrollOffset + 15)
-    
-    this.moveTo(1, 7)
-    console.log(coloredText("🐾 DETAILED ANIMAL STATUS", "bold"))
-    
-    if (animals.length === 0) {
-      console.log(coloredText("❌ No animals to display!", "red"))
-      return
-    }
-    
-    const headers = ["Name", "Species", "Energy", "Health", "Age", "Pos", "Behavior"]
-    const data = animals.map((animal) => {
-      const behavior = this.getAnimalBehavior(animal, ecosystem)
-      return [
-        animal.name,
-        animal.species,
-        `${Math.round(animal.energy)}%`,
-        `${Math.round(animal.health)}%`,
-        `${Math.round(animal.age)}`,
-        `(${Math.round(animal.position.x)},${Math.round(animal.position.y)})`,
-        behavior
-      ]
-    })
-    
-    this.moveTo(1, 9)
-    console.log(createTable(headers, data))
-    
-    if (ecosystem.animals.length > 15) {
-      this.moveTo(1, this.height - 4)
-      console.log(coloredText(`Showing ${this.scrollOffset + 1}-${Math.min(this.scrollOffset + 15, ecosystem.animals.length)} of ${ecosystem.animals.length}`, "white"))
-    }
-  }
-
-  drawDetailedStatistics(ecosystem) {
-    const stats = ecosystem.getStatistics()
-    
-    this.moveTo(1, 7)
-    console.log(coloredText("📊 DETAILED STATISTICS", "bold"))
-    
-    const basicData = [
-      ["Total Animals", stats.total.toString()],
-      ["Herbivores", stats.herbivores.toString()],
-      ["Carnivores", stats.carnivores.toString()],
-      ["Omnivores", stats.omnivores.toString()],
-      ["Food Available", stats.food.toString()],
-      ["Avg Energy", `${Math.round(stats.averageEnergy)}%`],
-      ["Avg Health", `${Math.round(stats.averageHealth)}%`],
-      ["Avg Age", Math.round(stats.averageAge).toString()]
-    ]
-    
-    const advancedData = ecosystem.mode === "advanced" ? [
-      ["Mode", ecosystem.mode.toUpperCase()],
-      ["Reproduction Threshold", `${ecosystem.rules.reproductionThreshold}%`],
-      ["Aging Rate", ecosystem.rules.agingRate.toString()],
-      ["Predation Efficiency", `${(ecosystem.rules.predationEfficiency * 100).toFixed(0)}%`],
-      ["Disease Spread", `${(ecosystem.rules.diseaseSpread * 100).toFixed(0)}%`],
-      ["Competition Factor", `${(ecosystem.rules.competitionFactor * 100).toFixed(0)}%`],
-      ["Weather Variability", `${(ecosystem.rules.weatherVariability * 100).toFixed(0)}%`],
-      ["Resource Regeneration", `${(ecosystem.rules.resourceRegeneration * 100).toFixed(0)}%`]
-    ] : []
-    
-    this.moveTo(1, 9)
-    console.log(createTable(["Metric", "Value"], basicData))
-    
-    if (advancedData.length > 0) {
-      this.moveTo(1, 18)
-      console.log(coloredText("⚙️ ADVANCED RULES", "bold"))
-      this.moveTo(1, 20)
-      console.log(createTable(["Rule", "Value"], advancedData))
-    }
   }
 
   getAnimalBehavior(animal, ecosystem) {
@@ -365,14 +371,19 @@ export class TerminalUI {
   }
 
   drawMessage(message, type = "info") {
+    // Messages are shown inline within the buffer
     const colors = {
       info: "blue",
       success: "green",
       warning: "yellow",
       error: "red",
     }
-
-    console.log(coloredText(`📢 ${message}`, colors[type]))
-    console.log()
+    
+    // Add message to buffer if we're currently rendering
+    if (this.buffer.length > 0) {
+      this.addToBuffer("")
+      this.addToBuffer(coloredText(`  📢 ${message}`, colors[type]))
+      this.addToBuffer("")
+    }
   }
 }

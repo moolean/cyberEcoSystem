@@ -77,7 +77,8 @@ export class Simulation {
           case "4":
           case "5":
             if (this.ui.switchView(key.name)) {
-              this.ui.drawMessage(`Switched to ${this.ui.currentView} view`, "success")
+              // View switched successfully, no need to show message
+              // Message will be visible in the header showing current view
             }
             break
           case "up":
@@ -99,7 +100,7 @@ export class Simulation {
 
   togglePause() {
     this.paused = !this.paused
-    this.ui.drawMessage(this.paused ? "Simulation paused" : "Simulation resumed", this.paused ? "warning" : "success")
+    // Status will be shown in the next render cycle
   }
 
   addRandomAnimal() {
@@ -110,14 +111,14 @@ export class Simulation {
 
     const animal = new Type(Date.now(), name)
     this.ecosystem.addAnimal(animal)
-    this.ui.drawMessage(`Added ${animal.species}: ${name}`, "success")
+    // Animal added, will be visible in next render
   }
 
   addFood() {
     for (let i = 0; i < 5; i++) {
       this.ecosystem.spawnFood()
     }
-    this.ui.drawMessage("Added 5 food items", "success")
+    // Food added, will be visible in next render
   }
 
   triggerDisaster() {
@@ -140,8 +141,7 @@ export class Simulation {
         this.ecosystem.rules.energyDecay *= 1.5
         break
     }
-
-    this.ui.drawMessage(`🌩️  Disaster triggered: ${disaster}!`, "error")
+    // Disaster triggered, effects will be visible in next render
   }
 
   toggleSort() {
@@ -156,25 +156,26 @@ export class Simulation {
         return a[this.ui.sortBy] < b[this.ui.sortBy] ? 1 : -1
       }
     })
-    
-    this.ui.drawMessage(`Sorting by ${this.ui.sortBy}`, "info")
+    // Sorted, will be visible in next render
   }
 
   toggleMode() {
     this.mode = this.mode === "basic" ? "advanced" : "basic"
-    this.ui.drawMessage(`Switched to ${this.mode} mode - restart to apply`, "warning")
+    // Mode switched, restart to apply
   }
 
   async showRulesMenu() {
     this.paused = true
-    this.ui.drawMessage("Rules menu - modify ecosystem parameters", "info")
+    
+    // Clear screen for menu
+    process.stdout.write('\x1b[2J\x1b[H')
 
     console.log(coloredText("\nAvailable rules to modify:", "yellow"))
-    console.log("1. Energy Decay (current: " + this.ecosystem.rules.energyDecay + ")")
+    console.log("1. Energy Decay (current: " + this.ecosystem.rules.energyDecay.toFixed(2) + ")")
     console.log("2. Health Decay (current: " + this.ecosystem.rules.healthDecay + ")")
-    console.log("3. Food Spawn Rate (current: " + this.ecosystem.rules.foodSpawnRate + ")")
+    console.log("3. Food Spawn Rate (current: " + this.ecosystem.rules.foodSpawnRate.toFixed(2) + ")")
     console.log("4. Max Food (current: " + this.ecosystem.rules.maxFood + ")")
-    console.log("5. Disaster Chance (current: " + this.ecosystem.rules.disasterChance + ")")
+    console.log("5. Disaster Chance (current: " + this.ecosystem.rules.disasterChance.toFixed(3) + ")")
     console.log("0. Exit menu")
 
     const rl = readline.createInterface({
@@ -211,44 +212,60 @@ export class Simulation {
         case "0":
           break
         default:
-          this.ui.drawMessage("Invalid choice", "error")
+          console.log("Invalid choice")
       }
     } catch (error) {
       // User cancelled
     } finally {
       rl.close()
       this.paused = false
-      this.ui.drawMessage("Rules updated - simulation resumed", "success")
+      // Re-initialize display after menu
+      this.ui.initialized = false
     }
   }
 
   start() {
     this.running = true
-    this.ui.drawMessage("Simulation started - Press Space to pause, R for rules, Q to quit", "info")
+    
+    // Show initial message
+    process.stdout.write('\x1b[2J\x1b[H')
+    console.log(coloredText("🌍 Starting Virtual Ecosystem Simulator...", "cyan"))
+    console.log(coloredText("Press Space to pause, R for rules, 1-5 to switch views, Q to quit", "white"))
+    console.log()
+    
+    setTimeout(() => {
+      const gameLoop = () => {
+        if (!this.running) return
 
-    const gameLoop = () => {
-      if (!this.running) return
-
-      if (!this.paused) {
-        this.ecosystem.update()
-        this.ui.draw(this.ecosystem)
+        if (!this.paused) {
+          this.ecosystem.update()
+        }
+        
+        // Always render, showing current state and paused status
+        this.ui.draw(this.ecosystem, this.paused)
 
         if (this.ecosystem.animals.length === 0) {
-          this.ui.drawMessage("🦴 All animals have perished! Ecosystem collapsed.", "error")
+          this.ui.buffer = []
+          this.ui.addToBuffer("")
+          this.ui.addToBuffer(coloredText("  🦴 All animals have perished! Ecosystem collapsed.", "red"))
+          this.ui.addToBuffer("")
+          this.ui.renderBuffer()
           this.stop()
           return
         }
+
+        setTimeout(gameLoop, this.updateInterval)
       }
 
-      setTimeout(gameLoop, this.updateInterval)
-    }
-
-    gameLoop()
+      gameLoop()
+    }, 2000)
   }
 
   stop() {
     this.running = false
-    this.ui.drawMessage("Simulation stopped. Thanks for playing!", "info")
+    process.stdout.write('\x1b[2J\x1b[H')
+    console.log(coloredText("\n🌍 Simulation stopped. Thanks for playing!", "cyan"))
+    console.log()
     process.stdin.setRawMode(false)
     process.exit(0)
   }

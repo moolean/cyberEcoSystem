@@ -49,7 +49,13 @@ export function createTable(headers, data) {
 }
 
 export function clearScreen() {
-  console.clear()
+  // Move cursor to home position without clearing
+  process.stdout.write('\x1b[H')
+}
+
+export function clearScreenFull() {
+  // Only use when really needed (e.g., initial render)
+  process.stdout.write('\x1b[2J\x1b[H')
 }
 
 export function getTerminalWidth() {
