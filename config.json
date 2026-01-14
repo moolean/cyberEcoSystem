@@ -1,0 +1,87 @@
+{
+  "ecosystem": {
+    "width": 100,
+    "height": 100,
+    "rules": {
+      "energyDecay": 2,
+      "healthDecay": 1,
+      "foodSpawnRate": 0.3,
+      "maxFood": 50,
+      "climate": "temperate",
+      "season": "spring",
+      "disasterChance": 0.01
+    }
+  },
+  "animals": {
+    "initialCount": 10,
+    "species": {
+      "herbivore": {
+        "speed": 1.5,
+        "maxAge": 50,
+        "reproductionThreshold": 70,
+        "reproductionChance": 0.1
+      },
+      "carnivore": {
+        "speed": 2.0,
+        "maxAge": 40,
+        "reproductionThreshold": 70,
+        "reproductionChance": 0.1
+      },
+      "omnivore": {
+        "speed": 1.8,
+        "maxAge": 45,
+        "reproductionThreshold": 70,
+        "reproductionChance": 0.1
+      }
+    }
+  },
+  "ui": {
+    "updateInterval": 1000,
+    "maxAnimalsDisplayed": 20,
+    "colors": {
+      "enabled": true,
+      "theme": "default"
+    }
+  },
+  "seasons": {
+    "spring": {
+      "foodSpawnRate": 0.4,
+      "energyDecay": 1.5,
+      "healthDecay": 0.8
+    },
+    "summer": {
+      "foodSpawnRate": 0.5,
+      "energyDecay": 2,
+      "healthDecay": 1
+    },
+    "autumn": {
+      "foodSpawnRate": 0.3,
+      "energyDecay": 2.5,
+      "healthDecay": 1.2
+    },
+    "winter": {
+      "foodSpawnRate": 0.1,
+      "energyDecay": 3,
+      "healthDecay": 1.5
+    }
+  },
+  "disasters": {
+    "drought": {
+      "foodSpawnRate": 0.05,
+      "description": "Severe drought reduces food availability"
+    },
+    "flood": {
+      "healthImpact": 20,
+      "description": "Flood damages all animals' health"
+    },
+    "disease": {
+      "infectionChance": 0.3,
+      "healthImpact": 30,
+      "description": "Disease spreads through the population"
+    },
+    "predator_surge": {
+      "energyDecayMultiplier": 1.5,
+      "description": "Predator surge increases energy consumption"
+    }
+  }
+}

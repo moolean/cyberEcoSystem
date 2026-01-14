@@ -1,0 +1,11 @@
+{
+  "name": "virtual-ecosystem",
+  "version": "1.0.0",
+  "description": "A virtual ecosystem simulation with animals surviving based on configurable rules",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  }
+}
