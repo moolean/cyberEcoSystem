@@ -26,13 +26,33 @@ npm start
 
 ## Controls
 
+- **1-5**: Switch between views (Animals, Statistics, Rules, Ecosystem, Performance)
 - **Space**: Pause/Resume simulation
 - **R**: Modify ecosystem rules
+- **M**: Toggle mode (Basic/Advanced)
 - **A**: Add random animal
 - **F**: Add food
 - **D**: Trigger random disaster
-- **C**: Clear/refresh screen
+- **S**: Sort animals
+- **↑/↓**: Scroll through lists
 - **Q**: Quit simulation
+
+## Views
+
+### View 1: Animals (Press '1')
+Displays a real-time table of all animals in the ecosystem with their status, energy, health, and age.
+
+### View 2: Statistics (Press '2')
+Shows ecosystem-wide statistics including population counts, averages, and food availability.
+
+### View 3: Rules (Press '3')
+Displays all current ecosystem rules and parameters that govern the simulation.
+
+### View 4: Ecosystem (Press '4')
+Shows a comprehensive overview of the ecosystem including season, climate, and time.
+
+### View 5: Performance (Press '5')
+Displays performance metrics including FPS, memory usage, and processing statistics.
 
 ## Ecosystem Rules
 
