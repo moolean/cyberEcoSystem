@@ -4,9 +4,16 @@ export class Ecosystem {
     this.height = height
     this.animals = []
     this.food = []
+    this.deadAnimals = [] // Track dead animals for decomposition
     this.time = 0
     this.mode = mode
     this.rules = this.getRulesByMode(mode)
+    
+    // New ecological systems
+    this.soilNutrition = 100 // 0-200 scale
+    this.oxygenLevel = 100 // 0-200 scale
+    this.waterLevel = 100 // 0-200 scale
+    this.weather = "clear" // clear, rainy, drought
   }
 
   getRulesByMode(mode) {
@@ -105,6 +112,101 @@ export class Ecosystem {
     this.rules.season = seasons[(currentIndex + 1) % 4]
 
     this.applySeasonalEffects()
+  }
+
+  // Weather system for water resource management
+  updateWeather() {
+    // Change weather every 50 ticks
+    if (this.time % 50 === 0) {
+      const weatherChance = Math.random()
+      if (weatherChance < 0.3) {
+        this.weather = "rainy"
+        this.waterLevel = Math.min(200, this.waterLevel + 30) // Rain adds water
+      } else if (weatherChance < 0.5) {
+        this.weather = "drought"
+        this.waterLevel = Math.max(0, this.waterLevel - 20) // Drought reduces water
+      } else {
+        this.weather = "clear"
+      }
+    }
+    
+    // Water slowly regenerates in clear weather
+    if (this.weather === "clear" && this.waterLevel < 100) {
+      this.waterLevel = Math.min(100, this.waterLevel + 0.5)
+    }
+  }
+
+  // Decomposition system: dead animals become soil nutrition
+  updateDecomposition() {
+    // Process dead animals
+    this.deadAnimals.forEach((deadAnimal, index) => {
+      deadAnimal.decompositionProgress = (deadAnimal.decompositionProgress || 0) + 1
+      
+      // Takes 20 ticks to fully decompose
+      if (deadAnimal.decompositionProgress >= 20) {
+        // Add nutrition to soil based on animal size
+        const nutritionGain = 15
+        this.soilNutrition = Math.min(200, this.soilNutrition + nutritionGain)
+        this.deadAnimals.splice(index, 1)
+      } else {
+        // Gradual decomposition adds small amounts
+        this.soilNutrition = Math.min(200, this.soilNutrition + 0.5)
+      }
+    })
+  }
+
+  // Oxygen system: plants produce oxygen, animals consume it
+  updateOxygen() {
+    // Plants (food items) produce oxygen
+    const plantCount = this.food.filter(f => f.type === "plant").length
+    const oxygenProduction = plantCount * 0.3
+    this.oxygenLevel = Math.min(200, this.oxygenLevel + oxygenProduction)
+    
+    // Animals consume oxygen
+    const oxygenConsumption = this.animals.length * 0.5
+    this.oxygenLevel = Math.max(0, this.oxygenLevel - oxygenConsumption)
+    
+    // Low oxygen damages animal health
+    if (this.oxygenLevel < 30) {
+      this.animals.forEach(animal => {
+        animal.health -= 2 // Animals suffer when oxygen is low
+      })
+    }
+  }
+
+  // Soil nutrition affects plant growth
+  updateSoilAndPlants() {
+    // Soil nutrition slowly depletes naturally
+    this.soilNutrition = Math.max(0, this.soilNutrition - 0.1)
+    
+    // Plants consume soil nutrition to grow
+    const plantCount = this.food.filter(f => f.type === "plant").length
+    this.soilNutrition = Math.max(0, this.soilNutrition - plantCount * 0.05)
+    
+    // If soil nutrition is low, reduce plant spawn rate
+    if (this.soilNutrition < 30) {
+      this.rules.foodSpawnRate *= 0.7
+    }
+  }
+
+  // Water consumption by animals and plants
+  updateWater() {
+    // Animals and plants consume water
+    const waterConsumption = (this.animals.length * 0.3) + (this.food.length * 0.2)
+    this.waterLevel = Math.max(0, this.waterLevel - waterConsumption)
+    
+    // Low water damages health
+    if (this.waterLevel < 20) {
+      this.animals.forEach(animal => {
+        animal.health -= 1.5
+      })
+      // Plants die in severe drought
+      if (this.waterLevel < 10 && Math.random() < 0.2) {
+        if (this.food.length > 0) {
+          this.food.splice(Math.floor(Math.random() * this.food.length), 1)
+        }
+      }
+    }
   }
 
   getTimeOfDay(time) {
@@ -215,6 +317,13 @@ export class Ecosystem {
       this.updateSeason()
     }
 
+    // Update new ecological systems
+    this.updateWeather()
+    this.updateDecomposition()
+    this.updateOxygen()
+    this.updateSoilAndPlants()
+    this.updateWater()
+
     this.applyTimeBasedRules()
     this.spawnFood()
 
@@ -237,6 +346,16 @@ export class Ecosystem {
 
     newAnimals.forEach((baby) => this.addAnimal(baby))
 
+    // Move dead animals to decomposition queue
+    const newlyDead = this.animals.filter(a => !a.alive)
+    newlyDead.forEach(deadAnimal => {
+      this.deadAnimals.push({
+        ...deadAnimal,
+        decompositionProgress: 0,
+        diedAt: this.time
+      })
+    })
+
     this.animals = this.animals.filter((a) => a.alive)
   }
 
@@ -252,6 +371,14 @@ export class Ecosystem {
       food: this.food.length,
       season: this.rules.season,
       time: this.time,
+      // New ecological data
+      soilNutrition: this.soilNutrition,
+      oxygenLevel: this.oxygenLevel,
+      waterLevel: this.waterLevel,
+      weather: this.weather,
+      decomposingBodies: this.deadAnimals.length,
+      plantCount: this.food.filter(f => f.type === "plant").length,
+      meatCount: this.food.filter(f => f.type === "meat").length
     }
 
     if (this.animals.length > 0) {
