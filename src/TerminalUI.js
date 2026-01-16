@@ -108,14 +108,16 @@ export class TerminalUI {
       night: "🌙"
     }
 
-    const separator = "=".repeat(this.width)
+    const separator = "═".repeat(this.width)
     const pausedText = paused ? coloredText(" [PAUSED]", "yellow") : ""
     
-    this.addToBuffer(coloredText(separator, "cyan"))
-    this.addToBuffer(coloredText("  🌍 VIRTUAL ECOSYSTEM SIMULATOR 🌍", "bold") + pausedText)
-    this.addToBuffer(coloredText(separator, "cyan"))
-    this.addToBuffer(coloredText(`  Season: ${seasonEmoji[stats.season]} ${stats.season.toUpperCase()} | Time: ${timeEmoji[timeOfDay]} ${timeOfDay.toUpperCase()} | FPS: ${this.fps}`, "yellow"))
-    this.addToBuffer(coloredText(`  Tick: ${stats.time} | View: ${this.currentView.toUpperCase()} (Press 1-5) | Animals: ${stats.total}`, "blue"))
+    this.addToBuffer(coloredText("╔" + separator.substring(2) + "╗", "cyan"))
+    this.addToBuffer(coloredText("║", "cyan") + coloredText(" 🌍 VIRTUAL ECOSYSTEM SIMULATOR 🌍", "bold") + pausedText + " ".repeat(Math.max(0, this.width - 37 - (paused ? 10 : 0))) + coloredText("║", "cyan"))
+    this.addToBuffer(coloredText("╠" + separator.substring(2) + "╣", "cyan"))
+    this.addToBuffer(coloredText("╠" + separator.substring(2) + "╣", "cyan"))
+    this.addToBuffer(coloredText("║", "cyan") + coloredText(` Season: ${seasonEmoji[stats.season]} ${stats.season.toUpperCase()} | Time: ${timeEmoji[timeOfDay]} ${timeOfDay.toUpperCase()} | FPS: ${this.fps}`, "yellow") + " ".repeat(Math.max(0, this.width - 60)) + coloredText("║", "cyan"))
+    this.addToBuffer(coloredText("║", "cyan") + coloredText(` Tick: ${stats.time} | View: ${this.currentView.toUpperCase()} (Press 1-5) | Animals: ${stats.total}`, "blue") + " ".repeat(Math.max(0, this.width - 58)) + coloredText("║", "cyan"))
+    this.addToBuffer(coloredText("╠" + separator.substring(2) + "╣", "cyan"))
     this.addToBuffer("")
   }
 
@@ -132,6 +134,12 @@ export class TerminalUI {
 
     this.addToBuffer(coloredText("  📊 ECOSYSTEM STATISTICS", "bold"))
     this.addToBuffer("")
+    
+    const weatherEmoji = {
+      clear: "☀️",
+      rainy: "🌧️",
+      drought: "🌵"
+    }
 
     const headers = ["Metric", "Value"]
     const data = [
@@ -139,10 +147,20 @@ export class TerminalUI {
       ["Herbivores 🌱", stats.herbivores],
       ["Carnivores 🦁", stats.carnivores],
       ["Omnivores 🐻", stats.omnivores],
+      ["─────────────", "─────────────"],
       ["Food Available", stats.food],
+      ["  Plants 🌿", stats.plantCount],
+      ["  Meat 🥩", stats.meatCount],
+      ["─────────────", "─────────────"],
       ["Avg Energy", `${Math.round(stats.averageEnergy)}%`],
       ["Avg Health", `${Math.round(stats.averageHealth)}%`],
       ["Avg Age", Math.round(stats.averageAge)],
+      ["─────────────", "─────────────"],
+      ["Soil Nutrition 🌱", `${Math.round(stats.soilNutrition)}%`],
+      ["Oxygen Level 💨", `${Math.round(stats.oxygenLevel)}%`],
+      ["Water Level 💧", `${Math.round(stats.waterLevel)}%`],
+      ["Weather", `${stats.weather} ${weatherEmoji[stats.weather] || ""}`],
+      ["Decomposing ⚰️", `${stats.decomposingBodies}`],
     ]
 
     const table = createTable(headers, data)
@@ -238,9 +256,10 @@ export class TerminalUI {
       "[S] Sort"
     ]
     
-    const separator = "=".repeat(this.width)
-    this.addToBuffer(coloredText(separator, "cyan"))
-    this.addToBuffer(coloredText("  🎮 CONTROLS: " + controls.join(" • "), "white"))
+    const separator = "═".repeat(this.width)
+    this.addToBuffer(coloredText("╠" + separator.substring(2) + "╣", "cyan"))
+    this.addToBuffer(coloredText("║", "cyan") + coloredText(" 🎮 CONTROLS: " + controls.join(" • "), "white") + " ".repeat(Math.max(0, this.width - 62)) + coloredText("║", "cyan"))
+    this.addToBuffer(coloredText("╚" + separator.substring(2) + "╝", "cyan"))
   }
 
   drawPerformanceView(ecosystem) {
@@ -271,18 +290,34 @@ export class TerminalUI {
     this.addToBuffer(coloredText("  🌍 ECOSYSTEM OVERVIEW", "bold"))
     this.addToBuffer("")
     
+    // Get weather emoji
+    const weatherEmoji = {
+      clear: "☀️",
+      rainy: "🌧️",
+      drought: "🌵"
+    }
+    
     const data = [
       ["Population", stats.total.toString()],
       ["Herbivores", `${stats.herbivores} 🌱`],
       ["Carnivores", `${stats.carnivores} 🦁`],
       ["Omnivores", `${stats.omnivores} 🐻`],
+      ["─────────────", "─────────────"],
       ["Food Supply", stats.food.toString()],
+      ["  Plants 🌿", stats.plantCount.toString()],
+      ["  Meat 🥩", stats.meatCount.toString()],
+      ["─────────────", "─────────────"],
+      ["Soil Nutrition", `${Math.round(stats.soilNutrition)}%`],
+      ["Oxygen Level", `${Math.round(stats.oxygenLevel)}%`],
+      ["Water Level", `${Math.round(stats.waterLevel)}%`],
+      ["Weather", `${stats.weather} ${weatherEmoji[stats.weather] || ""}`],
+      ["Decomposing", `${stats.decomposingBodies} bodies`],
+      ["─────────────", "─────────────"],
       ["Avg Energy", `${Math.round(stats.averageEnergy)}%`],
       ["Avg Health", `${Math.round(stats.averageHealth)}%`],
       ["Avg Age", Math.round(stats.averageAge).toString()],
       ["Season", `${stats.season} ${this.getSeasonEmoji(stats.season)}`],
       ["Time of Day", this.getTimeOfDay(stats.time)],
-      ["Climate", ecosystem.rules.climate],
       ["Ticks Elapsed", stats.time.toString()],
     ]
     

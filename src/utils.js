@@ -18,15 +18,30 @@ export function createTable(headers, data) {
   if (!headers || !data || data.length === 0) return ""
 
   const colWidths = headers.map((h) => 15)
-  const border = "+".repeat(headers.reduce((sum, h, i) => sum + colWidths[i] + 3, 1))
+  
+  // Use beautiful Unicode box-drawing characters
+  const totalWidth = headers.reduce((sum, h, i) => sum + colWidths[i] + 3, 1)
+  const topBorder = "╔" + "═".repeat(totalWidth - 2) + "╗"
+  const midBorder = "╠" + "═".repeat(totalWidth - 2) + "╣"
+  const bottomBorder = "╚" + "═".repeat(totalWidth - 2) + "╝"
+  
+  // Build column separators for mid border
+  let midSeparator = "╠"
+  headers.forEach((h, i) => {
+    midSeparator += "═".repeat(colWidths[i] + 2)
+    if (i < headers.length - 1) {
+      midSeparator += "╬"
+    }
+  })
+  midSeparator += "╣"
 
-  let table = border + "\n"
-  table += "| " + headers.map((h, i) => coloredText(h.padEnd(colWidths[i]), "cyan")).join(" | ") + " |\n"
-  table += border + "\n"
+  let table = coloredText(topBorder, "cyan") + "\n"
+  table += coloredText("║", "cyan") + " " + headers.map((h, i) => coloredText(h.padEnd(colWidths[i]), "bold")).join(coloredText(" │ ", "cyan")) + " " + coloredText("║", "cyan") + "\n"
+  table += coloredText(midSeparator, "cyan") + "\n"
 
   data.forEach((row) => {
     table +=
-      "| " +
+      coloredText("║", "cyan") + " " +
       row
         .map((cell, i) => {
           const cellStr = String(cell).padEnd(colWidths[i])
@@ -40,11 +55,11 @@ export function createTable(headers, data) {
           }
           return cellStr
         })
-        .join(" | ") +
-      " |\n"
+        .join(coloredText(" │ ", "cyan")) +
+      " " + coloredText("║", "cyan") + "\n"
   })
 
-  table += border
+  table += coloredText(bottomBorder, "cyan")
   return table
 }
 
