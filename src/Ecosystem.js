@@ -383,7 +383,9 @@ export class Ecosystem {
 
     if (this.animals.length > 0) {
       this.animals.forEach((animal) => {
-        stats[animal.species]++
+        // Map species to plural form
+        const speciesKey = animal.species + "s"
+        stats[speciesKey]++
         stats.averageEnergy += animal.energy
         stats.averageHealth += animal.health
         stats.averageAge += animal.age
